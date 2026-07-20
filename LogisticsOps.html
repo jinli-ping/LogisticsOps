@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>物流运营小助手 — LogisticsOps</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --primary: #1a237e; --primary-light: #3949ab; --accent: #ff6f00;
+  --bg: #f5f6fa; --card: #fff; --text: #212121; --muted: #757575;
+  --success: #2e7d32; --warning: #e65100; --danger: #c62828;
+  --border: #e0e0e0; --shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif; background: var(--bg); color: var(--text); min-height:100vh; }
+.header { background: linear-gradient(135deg, var(--primary), var(--primary-light)); color:#fff; padding: 24px 32px; }
+.header h1 { font-size: 26px; font-weight: 700; }
+.header p { font-size: 14px; opacity: .8; margin-top: 4px; }
+.nav { display:flex; gap:0; background: var(--primary); padding:0 32px; }
+.nav button { background: none; border: none; color: rgba(255,255,255,.65); padding: 14px 28px; font-size: 15px; cursor:pointer; border-bottom: 3px solid transparent; transition: all .2s; font-family: inherit; }
+.nav button:hover { color:#fff; }
+.nav button.active { color:#fff; border-bottom-color: var(--accent); }
+.main { max-width: 1200px; margin: 0 auto; padding: 28px 32px; }
+.tab { display: none; }
+.tab.active { display: block; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.card { background: var(--card); border-radius: 10px; padding: 20px; box-shadow: var(--shadow); }
+.card .label { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+.card .value { font-size: 32px; font-weight: 700; }
+.card .sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+.panel { background: var(--card); border-radius: 10px; padding: 20px; box-shadow: var(--shadow); }
+.panel h3 { font-size: 16px; color: var(--primary); margin-bottom: 12px; border-left: 3px solid var(--accent); padding-left: 10px; }
+canvas { max-height: 320px; }
+.btn { padding: 10px 22px; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; font-family: inherit; transition: all .2s; }
+.btn-primary { background: var(--primary); color:#fff; }
+.btn-primary:hover { background: var(--primary-light); }
+.btn-outline { background: #fff; color: var(--primary); border: 1px solid var(--primary); }
+.btn-outline:hover { background: #f0f0ff; }
+.btn-danger { background: var(--danger); color:#fff; }
+.btn-sm { padding: 5px 12px; font-size: 12px; }
+input, select { padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; font-family: inherit; }
+table { width:100%; border-collapse: collapse; font-size: 14px; }
+th { background: var(--primary); color:#fff; padding: 10px 12px; text-align: left; font-weight: 600; }
+td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+tr:hover td { background: #f8f9ff; }
+.alert-red { color: var(--danger); font-weight: 700; }
+.alert-yellow { color: var(--warning); font-weight: 700; }
+.alert-green { color: var(--success); font-weight: 700; }
+.badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+.badge-red { background: #ffebee; color: var(--danger); }
+.badge-yellow { background: #fff3e0; color: var(--warning); }
+.badge-green { background: #e8f5e9; color: var(--success); }
+.toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 20px; }
+.rank-num { width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; color:#fff; }
+.rank-1 { background: #f9a825; }
+.rank-2 { background: #90a4ae; }
+.rank-3 { background: #a1887f; }
+.stock-bar { height: 8px; border-radius: 4px; background: #e0e0e0; margin-top: 4px; overflow: hidden; }
+.stock-bar-fill { height: 100%; border-radius: 4px; transition: width .3s; }
+.footer { text-align: center; padding: 20px; color: var(--muted); font-size: 12px; }
+.w-full { grid-column: 1 / -1; }
+@media (max-width: 768px) { .row { grid-template-columns: 1fr; } .nav button { padding: 12px 16px; font-size: 13px; } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📦 物流运营小助手 — LogisticsOps</h1>
+  <p>订单数据分析 · 库存安全预警 · 供应商评分管理</p>
+</div>
+
+<div class="nav">
+  <button class="active" onclick="switchTab('orders')">📊 订单数据分析</button>
+  <button onclick="switchTab('inventory')">📋 库存看板</button>
+  <button onclick="switchTab('supplier')">⭐ 供应商评分</button>
+</div>
+
+<div class="main">
+
+<!-- ====== TAB 1: 订单数据分析 ====== -->
+<div id="tab-orders" class="tab active">
+
+  <div class="toolbar">
+    <button class="btn btn-outline" onclick="loadDemoOrders()">📥 加载演示数据</button>
+    <input type="file" id="orderFile" accept=".csv" onchange="handleOrderCSV(this)" style="display:none">
+    <button class="btn btn-outline" onclick="document.getElementById('orderFile').click()">📁 上传 CSV</button>
+    <span style="font-size:12px;color:var(--muted)">CSV 格式: 日期,订单数,准时交付,异常数</span>
+  </div>
+
+  <div class="cards" id="orderCards">
+    <div class="card"><div class="label">📦 总订单量</div><div class="value" id="oc-total">--</div><div class="sub">统计周期内</div></div>
+    <div class="card"><div class="label">✅ 准时交付率</div><div class="value" id="oc-ontime">--</div><div class="sub">目标 ≥ 95%</div></div>
+    <div class="card"><div class="label">⚠️ 异常订单</div><div class="value" id="oc-anomaly">--</div><div class="sub">占比</div></div>
+    <div class="card"><div class="label">📈 日均订单量</div><div class="value" id="oc-avg">--</div><div class="sub">单/天</div></div>
+  </div>
+
+  <div class="row">
+    <div class="panel"><h3>📈 订单量趋势</h3><canvas id="chartOrderTrend"></canvas></div>
+    <div class="panel"><h3>🍩 准时 vs 异常分布</h3><canvas id="chartOrderPie"></canvas></div>
+  </div>
+
+  <div class="panel w-full"><h3>📋 订单明细</h3><div style="overflow-x:auto;"><table id="orderTable"><thead><tr><th>日期</th><th>订单数</th><th>准时交付</th><th>准时率</th><th>异常数</th><th>状态</th></tr></thead><tbody><tr><td colspan="6" style="text-align:center;color:var(--muted);">加载演示数据或上传 CSV 开始分析</td></tr></tbody></table></div></div>
+
+</div>
+
+<!-- ====== TAB 2: 库存看板 ====== -->
+<div id="tab-inventory" class="tab">
+
+  <div class="toolbar">
+    <button class="btn btn-outline" onclick="loadDemoInventory()">📥 加载演示数据</button>
+    <button class="btn btn-primary" onclick="addInventoryRow()">➕ 手动添加</button>
+  </div>
+
+  <div class="cards" id="invCards">
+    <div class="card"><div class="label">📦 SKU 总数</div><div class="value" id="iv-sku">0</div></div>
+    <div class="card"><div class="label">🔴 库存预警</div><div class="value alert-red" id="iv-alert">0</div><div class="sub">低于安全库存</div></div>
+    <div class="card"><div class="label">🔄 平均周转率</div><div class="value" id="iv-turnover">--</div><div class="sub">次/月</div></div>
+    <div class="card"><div class="label">📅 平均可售天数</div><div class="value" id="iv-days">--</div></div>
+  </div>
+
+  <div class="row">
+    <div class="panel"><h3>📊 库存水位对比</h3><canvas id="chartStockBar"></canvas></div>
+    <div class="panel"><h3>⚠️ 安全库存预警明细</h3><div id="alertList" style="font-size:14px;color:var(--muted);">暂无预警</div></div>
+  </div>
+
+  <div class="panel w-full"><h3>📋 库存明细表</h3><div style="overflow-x:auto;"><table id="invTable"><thead><tr><th>SKU 名称</th><th>当前库存</th><th>安全库存</th><th>日均用量</th><th>可售天数</th><th>周转率(次/月)</th><th>状态</th><th>操作</th></tr></thead><tbody></tbody></table></div></div>
+
+</div>
+
+<!-- ====== TAB 3: 供应商评分 ====== -->
+<div id="tab-supplier" class="tab">
+
+  <div class="toolbar">
+    <button class="btn btn-outline" onclick="loadDemoSuppliers()">📥 加载演示数据</button>
+    <button class="btn btn-primary" onclick="addSupplierRow()">➕ 添加供应商</button>
+  </div>
+
+  <div class="row">
+    <div class="panel"><h3>🎯 供应商综合雷达图</h3><canvas id="chartRadar"></canvas></div>
+    <div class="panel"><h3>🏆 综合排名</h3><div id="rankList" style="font-size:14px;color:var(--muted);">请加载数据或添加供应商</div></div>
+  </div>
+
+  <div class="panel w-full"><h3>📋 供应商评分表</h3><div style="overflow-x:auto;"><table id="supTable"><thead><tr><th>排名</th><th>供应商</th><th>交付准时 (30%)</th><th>质量合格 (35%)</th><th>价格竞争力 (20%)</th><th>配合度 (15%)</th><th>综合得分</th><th>等级</th><th>操作</th></tr></thead><tbody></tbody></table></div></div>
+
+</div>
+
+</div>
+
+<div class="footer">物流运营小助手 · LogisticsOps · 湖北第二师范学院 经济与管理学院</div>
+
+<script>
+// ====== GLOBALS ======
+let orderData = [];
+let inventoryData = [];
+let supplierData = [];
+let chartOrderTrend, chartOrderPie, chartStockBar, chartRadar;
+
+// ====== TAB SWITCH ======
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.target.classList.add('active');
+  if (name === 'orders') { renderOrders(); }
+  if (name === 'inventory') { renderInventory(); }
+  if (name === 'supplier') { renderSuppliers(); }
+}
+
+// ====== TAB 1: 订单数据分析 ======
+function loadDemoOrders() {
+  const today = new Date();
+  orderData = [];
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(today); d.setDate(d.getDate() - i);
+    const ds = d.toISOString().slice(0, 10);
+    const total = Math.floor(Math.random() * 80) + 40;
+    const ontime = Math.floor(total * (0.88 + Math.random() * 0.1));
+    const anomaly = Math.floor(total * (0.02 + Math.random() * 0.08));
+    orderData.push({ date: ds, total, ontime: Math.min(ontime, total - anomaly), anomaly });
+  }
+  renderOrders();
+}
+
+function handleOrderCSV(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const lines = e.target.result.split('\n').filter(l => l.trim());
+    orderData = [];
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(',');
+      if (cols.length >= 4) {
+        orderData.push({
+          date: cols[0].trim(),
+          total: parseInt(cols[1]) || 0,
+          ontime: parseInt(cols[2]) || 0,
+          anomaly: parseInt(cols[3]) || 0
+        });
+      }
+    }
+    renderOrders();
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function renderOrders() {
+  if (!orderData.length) return;
+  const total = orderData.reduce((s, r) => s + r.total, 0);
+  const ontimeTotal = orderData.reduce((s, r) => s + r.ontime, 0);
+  const anomalyTotal = orderData.reduce((s, r) => s + r.anomaly, 0);
+  const ontimeRate = total ? ((ontimeTotal / (ontimeTotal + anomalyTotal)) * 100).toFixed(1) : '--';
+  const anomalyRate = total ? ((anomalyTotal / total) * 100).toFixed(1) : '--';
+  const avgDaily = (total / orderData.length).toFixed(0);
+
+  document.getElementById('oc-total').textContent = total;
+  document.getElementById('oc-ontime').textContent = ontimeRate + '%';
+  document.getElementById('oc-anomaly').textContent = anomalyRate + '%';
+  document.getElementById('oc-avg').textContent = avgDaily;
+
+  // Trend chart
+  const ctx1 = document.getElementById('chartOrderTrend').getContext('2d');
+  if (chartOrderTrend) chartOrderTrend.destroy();
+  chartOrderTrend = new Chart(ctx1, {
+    type: 'line',
+    data: {
+      labels: orderData.map(r => r.date.slice(5)),
+      datasets: [
+        { label: '订单量', data: orderData.map(r => r.total), borderColor: '#1a237e', backgroundColor: 'rgba(26,35,126,0.08)', fill: true, tension: 0.3 },
+        { label: '准时交付', data: orderData.map(r => r.ontime), borderColor: '#2e7d32', backgroundColor: 'transparent', tension: 0.3, borderDash: [4,4] }
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom' } } }
+  });
+
+  // Pie chart
+  const ctx2 = document.getElementById('chartOrderPie').getContext('2d');
+  if (chartOrderPie) chartOrderPie.destroy();
+  chartOrderPie = new Chart(ctx2, {
+    type: 'doughnut',
+    data: {
+      labels: ['准时交付', '异常订单'],
+      datasets: [{ data: [ontimeTotal, anomalyTotal], backgroundColor: ['#2e7d32', '#c62828'], borderWidth: 2 }]
+    },
+    options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom' } } }
+  });
+
+  // Table
+  let html = '';
+  orderData.forEach(r => {
+    const rate = r.total ? ((r.ontime / r.total) * 100).toFixed(1) : '--';
+    const status = parseFloat(rate) >= 95 ? '<span class="badge badge-green">正常</span>' :
+                   parseFloat(rate) >= 85 ? '<span class="badge badge-yellow">关注</span>' :
+                   '<span class="badge badge-red">异常</span>';
+    html += `<tr><td>${r.date}</td><td>${r.total}</td><td>${r.ontime}</td><td>${rate}%</td><td>${r.anomaly}</td><td>${status}</td></tr>`;
+  });
+  document.querySelector('#orderTable tbody').innerHTML = html;
+}
+
+// ====== TAB 2: 库存看板 ======
+function loadDemoInventory() {
+  inventoryData = [
+    { sku: 'A101 电子标签', stock: 120, safety: 100, daily: 8, lead: 7 },
+    { sku: 'B202 包装箱-大', stock: 45, safety: 60, daily: 15, lead: 3 },
+    { sku: 'C303 冷链保温箱', stock: 80, safety: 50, daily: 6, lead: 5 },
+    { sku: 'D404 运输绑带', stock: 30, safety: 40, daily: 10, lead: 4 },
+    { sku: 'E505 扫码枪电池', stock: 200, safety: 150, daily: 12, lead: 10 },
+    { sku: 'F606 防震泡沫', stock: 15, safety: 30, daily: 8, lead: 3 },
+  ];
+  renderInventory();
+}
+
+function addInventoryRow() {
+  const sku = prompt('SKU 名称：'); if (!sku) return;
+  const stock = parseInt(prompt('当前库存：')) || 0;
+  const safety = parseInt(prompt('安全库存阈值：')) || 0;
+  const daily = parseInt(prompt('日均用量：')) || 0;
+  const lead = parseInt(prompt('采购提前期(天)：')) || 0;
+  inventoryData.push({ sku, stock, safety, daily, lead });
+  renderInventory();
+}
+
+function renderInventory() {
+  if (!inventoryData.length) return;
+  const alerts = inventoryData.filter(r => r.stock < r.safety);
+  const skuCount = inventoryData.length;
+  const avgTurnover = inventoryData.reduce((s, r) => s + ((r.daily * 30) / Math.max(r.stock, 1)), 0) / skuCount;
+  const avgDays = inventoryData.reduce((s, r) => s + (r.stock / Math.max(r.daily, 1)), 0) / skuCount;
+
+  document.getElementById('iv-sku').textContent = skuCount;
+  document.getElementById('iv-alert').textContent = alerts.length;
+  document.getElementById('iv-turnover').textContent = avgTurnover.toFixed(2);
+  document.getElementById('iv-days').textContent = avgDays.toFixed(0) + ' 天';
+
+  // Bar chart
+  const ctx3 = document.getElementById('chartStockBar').getContext('2d');
+  if (chartStockBar) chartStockBar.destroy();
+  chartStockBar = new Chart(ctx3, {
+    type: 'bar',
+    data: {
+      labels: inventoryData.map(r => r.sku),
+      datasets: [
+        { label: '当前库存', data: inventoryData.map(r => r.stock), backgroundColor: '#1a237e', borderRadius: 4 },
+        { label: '安全库存线', data: inventoryData.map(r => r.safety), backgroundColor: '#c62828', borderRadius: 4 }
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom' } } }
+  });
+
+  // Alert list
+  let alertHtml = '';
+  if (alerts.length === 0) alertHtml = '<span style="color:#2e7d32;">✅ 所有 SKU 库存安全</span>';
+  else alerts.forEach(r => {
+    const gap = r.safety - r.stock;
+    alertHtml += `<div style="padding:8px 0;border-bottom:1px solid #eee;">🔴 <b>${r.sku}</b> — 缺 ${gap} 件（当前 ${r.stock} / 安全线 ${r.safety}）</div>`;
+  });
+  document.getElementById('alertList').innerHTML = alertHtml;
+
+  // Table
+  let html = '';
+  inventoryData.forEach((r, i) => {
+    const days = (r.stock / Math.max(r.daily, 1)).toFixed(1);
+    const turnover = (r.daily * 30 / Math.max(r.stock, 1)).toFixed(2);
+    const below = r.stock < r.safety;
+    const status = below ? '<span class="badge badge-red">⚠ 预警</span>' :
+                   r.stock < r.safety * 1.3 ? '<span class="badge badge-yellow">⚡ 关注</span>' :
+                   '<span class="badge badge-green">✅ 正常</span>';
+    html += `<tr>
+      <td><b>${r.sku}</b></td>
+      <td>${r.stock}</td><td>${r.safety}</td><td>${r.daily}</td>
+      <td>${days}</td><td>${turnover}</td><td>${status}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteInv(${i})">删除</button></td>
+    </tr>`;
+  });
+  document.querySelector('#invTable tbody').innerHTML = html;
+}
+
+function deleteInv(i) { inventoryData.splice(i, 1); renderInventory(); }
+
+// ====== TAB 3: 供应商评分 ======
+function loadDemoSuppliers() {
+  supplierData = [
+    { name: '顺达物流科技', delivery: 9, quality: 8, price: 7, cooperation: 8 },
+    { name: '安迅供应链', delivery: 7, quality: 9, price: 6, cooperation: 9 },
+    { name: '通达运输', delivery: 6, quality: 7, price: 9, cooperation: 6 },
+    { name: '极速配送', delivery: 8, quality: 6, price: 8, cooperation: 7 },
+  ];
+  renderSuppliers();
+}
+
+function addSupplierRow() {
+  const name = prompt('供应商名称：'); if (!name) return;
+  const delivery = parseInt(prompt('交付准时率 (1-10)：')) || 5;
+  const quality = parseInt(prompt('质量合格率 (1-10)：')) || 5;
+  const price = parseInt(prompt('价格竞争力 (1-10)：')) || 5;
+  const cooperation = parseInt(prompt('配合度 (1-10)：')) || 5;
+  supplierData.push({ name, delivery: Math.min(10,Math.max(1,delivery)), quality: Math.min(10,Math.max(1,quality)), price: Math.min(10,Math.max(1,price)), cooperation: Math.min(10,Math.max(1,cooperation)) });
+  renderSuppliers();
+}
+
+function calcScore(s) {
+  return (s.delivery * 0.30 + s.quality * 0.35 + s.price * 0.20 + s.cooperation * 0.15).toFixed(2);
+}
+
+function renderSuppliers() {
+  if (!supplierData.length) return;
+
+  // Radar chart
+  const ctx4 = document.getElementById('chartRadar').getContext('2d');
+  if (chartRadar) chartRadar.destroy();
+  const colors = ['#1a237e', '#c62828', '#2e7d32', '#e65100', '#6a1b9a'];
+  chartRadar = new Chart(ctx4, {
+    type: 'radar',
+    data: {
+      labels: ['交付准时 (30%)', '质量合格 (35%)', '价格竞争力 (20%)', '配合度 (15%)'],
+      datasets: supplierData.map((s, i) => ({
+        label: s.name,
+        data: [s.delivery, s.quality, s.price, s.cooperation],
+        borderColor: colors[i % colors.length],
+        backgroundColor: 'transparent',
+        borderWidth: 2
+      }))
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      scales: { r: { beginAtZero: true, max: 10, ticks: { stepSize: 2 } } },
+      plugins: { legend: { position: 'bottom' } }
+    }
+  });
+
+  // Ranking
+  const ranked = [...supplierData].sort((a, b) => calcScore(b) - calcScore(a));
+  let rankHtml = '';
+  ranked.forEach((s, i) => {
+    const score = calcScore(s);
+    const grade = score >= 8 ? '<span class="badge badge-green">A 级</span>' :
+                  score >= 6 ? '<span class="badge badge-yellow">B 级</span>' :
+                  '<span class="badge badge-red">C 级</span>';
+    const rankCls = i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : i === 2 ? 'rank-3' : '';
+    rankHtml += `<div style="padding:10px 0;border-bottom:1px solid #eee;display:flex;align-items:center;gap:12px;">
+      <span class="rank-num ${rankCls}">${i+1}</span>
+      <b style="flex:1">${s.name}</b>
+      <span style="font-size:20px;font-weight:700;color:#1a237e;">${score}</span>
+      ${grade}
+    </div>`;
+  });
+  document.getElementById('rankList').innerHTML = rankHtml;
+
+  // Table
+  let html = '';
+  ranked.forEach((s, i) => {
+    const score = calcScore(s);
+    const grade = score >= 8 ? '<span class="badge badge-green">A 级</span>' :
+                  score >= 6 ? '<span class="badge badge-yellow">B 级</span>' : '<span class="badge badge-red">C 级</span>';
+    html += `<tr>
+      <td>${i+1}</td><td><b>${s.name}</b></td>
+      <td>${s.delivery}</td><td>${s.quality}</td><td>${s.price}</td><td>${s.cooperation}</td>
+      <td><b>${score}</b></td><td>${grade}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteSup(${supplierData.indexOf(s)})">删除</button></td>
+    </tr>`;
+  });
+  document.querySelector('#supTable tbody').innerHTML = html;
+}
+
+function deleteSup(i) { supplierData.splice(i, 1); renderSuppliers(); }
+
+// ====== INIT ======
+loadDemoOrders();
+</script>
+</body>
+</html>
