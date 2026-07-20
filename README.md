@@ -23,6 +23,16 @@
 
 ---
 
+## 📸 界面预览
+
+<p align="center">
+  <img src="docs/1-orders.png" width="32%" alt="订单数据分析">
+  <img src="docs/2-inventory.png" width="32%" alt="库存看板">
+  <img src="docs/3-supplier.png" width="32%" alt="供应商评分">
+</p>
+
+---
+
 ## 🚀 立即体验
 
 | 入口 | 地址 | 说明 |
