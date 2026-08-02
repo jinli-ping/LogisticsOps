@@ -132,14 +132,15 @@ python -m http.server 8080
 
 ---
 
-## 📈 与 ALRSAT 的关系
+## 📈 相关项目
 
 | 工具 | 定位 | 链接 |
 |------|------|------|
+| **SCL** | 供应链智算 — 需求预测 · 安全库存 · 牛鞭效应 | [GitHub](https://github.com/jinli-ping/SupplyChainLab) |
 | **ALRSAT** | 企业风险管理（竞赛项目） | [GitHub](https://github.com/jinli-ping/ALRSAT) |
-| **LogisticsOps** | 日常运营管理（专业实战） | 本仓库 |
+| **LogiOps** | 日常运营管理（专业实战） | 本仓库 |
 
-两个工具互补，覆盖「风险管控」+「日常运营」完整链路。
+三个工具互补，覆盖「计划 → 执行 → 风控」完整链路。
 
 ---
 
