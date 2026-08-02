@@ -225,7 +225,8 @@ function switchTab(name) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
-  event.target.classList.add('active');
+  var btn = document.querySelector('.nav button[onclick*=\"' + name + '\"]');
+  if (btn) btn.classList.add('active');
   if (name === 'orders') renderOrders();
   if (name === 'inventory') renderInventory();
   if (name === 'supplier') renderSuppliers();
