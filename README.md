@@ -103,8 +103,10 @@
 
 ```
 LogisticsOps/
-├── index.html           # 完整应用（单文件，可直接打开）
-├── README.md            # 项目说明
+├── index.html            # 完整应用（单文件，可直接打开）
+├── 启动LogiOps.bat        # Windows 一键启动
+├── README.md
+├── docs/                 # 截图
 └── .gitignore
 ```
 
